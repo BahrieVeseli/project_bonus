@@ -2,7 +2,13 @@
 
 // Importimi i Firebase
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import {
+  getAuth,
+  initializeAuth,
+  getReactNativePersistence,
+} from "firebase/auth";
+import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCniTxiTOUtc0qv1BGlbCVnE8X6kjx4FTE",
@@ -12,9 +18,16 @@ const firebaseConfig = {
   messagingSenderId: "59661906063",
   appId: "1:59661906063:web:e905e5bd3d3319bae080fa",
 };
-
-// Inicializo Firebase
 const app = initializeApp(firebaseConfig);
 
-// Inicializo Auth
-export const auth = getAuth(app);
+// ✅ përdor platform check
+let auth;
+if (Platform.OS === "web") {
+  auth = getAuth(app);
+} else {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+  });
+}
+
+export { auth };

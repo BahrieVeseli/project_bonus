@@ -9,35 +9,44 @@ import * as Google from 'expo-auth-session/providers/google';
 
 WebBrowser.maybeCompleteAuthSession();
 
+
 const login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-
-const [request, response, promptAsync] = Google.useAuthRequest({
+  const [request, response, promptAsync] = Google.useAuthRequest({
   expoClientId: "59661906063-9k4aa9facc0p1mvbcsq0kokkd9n233u1.apps.googleusercontent.com",
   iosClientId: "59661906063-9k4aa9facc0p1mvbcsq0kokkd9n233u1.apps.googleusercontent.com",
   androidClientId: "59661906063-9k4aa9facc0p1mvbcsq0kokkd9n233u1.apps.googleusercontent.com",
   webClientId: "59661906063-9k4aa9facc0p1mvbcsq0kokkd9n233u1.apps.googleusercontent.com",
-
+  extraParams: {
+    prompt: "select_account", 
+  },
 });
 
+ useEffect(() => {
+  if (response?.type === "success") {
+    const { authentication } = response;
 
-
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
+    if (authentication?.idToken) {
+     
+      const credential = GoogleAuthProvider.credential(authentication.idToken);
       signInWithCredential(auth, credential)
-        .then(() => {
-          router.push("/");
-        })
+        .then(() => router.push("/"))
         .catch((err) => setError(err.message));
+    } else if (authentication?.accessToken) {
+           const credential = GoogleAuthProvider.credential(null, authentication.accessToken);
+      signInWithCredential(auth, credential)
+        .then(() => router.push("/"))
+        .catch((err) => setError(err.message));
+    } else {
+      setError("Google login failed: no token received");
     }
-  }, [response]);
+  }
+}, [response]);
+
 
   const validateInputs = () => {
     if (email.trim() === "" || password.trim() === "") {
@@ -56,21 +65,24 @@ const [request, response, promptAsync] = Google.useAuthRequest({
   };
 
   const handleLogin = async () => {
-    if (!validateInputs()) return;
-    setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      setLoading(false);
-      router.push("/");
-    } catch (error) {
-      setLoading(false);
-      if (error.code === "auth/invalid-credential") {
-        setError("Incorrect email or password");
-      } else {
-        setError(error.message);
-      }
+  if (!validateInputs()) return;
+  setLoading(true);
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    setLoading(false);
+    router.push("/");
+  } catch (error) {
+    setLoading(false);
+    if (error.code === "auth/wrong-password") {
+      setError("Incorrect password");
+    } else if (error.code === "auth/user-not-found") {
+      setError("No account found with this email");
+    } else {
+      setError(error.message);
     }
-  };
+  }
+};
+
 
   return (
     <View style={styles.container}>
@@ -112,7 +124,7 @@ const [request, response, promptAsync] = Google.useAuthRequest({
           }}
           style={styles.googleIcon}
         />
-        <Text style={styles.googleText}>Sign in with Google</Text>
+        <Text style={styles.googleText}>Log in with Google</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push("/register")}>
